@@ -10,7 +10,7 @@ A deep learning system that listens to a guitar being played and generates tabla
  
 ## Overview
  
-Guitar tablature specifies *where* on the neck a note is played (which string, which fret), not just *what pitch*. This is a harder problem than pitch detection because the same note can be played at multiple positions — for example, A2 can be played on string 1 fret 5, string 2 fret 0, or string 3 fret 7.
+Guitar tablature specifies *where* on the neck a note is played (which string, which fret), not just *what pitch*. This is a harder problem than pitch detection because the same note can be played at multiple positions. For example, A2 can be played on string 1 fret 5, string 2 fret 0, or string 3 fret 7.
  
 This project tackles this with a CNN that classifies audio into one of **138 joint (string × fret) positions**, forcing same-pitch alternatives to compete directly in a single softmax. The model achieves **99.9% accuracy** on held-out data from the same recording session and **75.0%** on separately-recorded test notes.
  
@@ -51,7 +51,7 @@ noteCapture/
 ### Prerequisites
  
 - Python 3.10+
-- A microphone or audio interface for live capture
+- audio interface for live capture
 - The trained model checkpoint (`checkpoints_v5/best_v5.pt`)
 ### Installation
  
@@ -121,7 +121,7 @@ print(f"String: {string}, Fret: {fret}")
  
 ### Architecture
  
-The model is a residual CNN with a **joint 138-class position head** — instead of separate string and fret predictions, it classifies directly into one of 138 (string × fret) positions. This forces same-pitch alternatives to compete in a single softmax.
+The model is a residual CNN with a **joint 138-class position head** instead of separate string and fret predictions, it classifies directly into one of 138 (string × fret) positions. This forces same-pitch alternatives to compete in a single softmax.
  
 ```
 Input: 5 × 128 × T feature tensor
@@ -177,6 +177,7 @@ data/
  
 Each file is a single note recorded on the specified string and fret. The dataset is not included in this repository due to size.
  
+contact me through Dylanpjhough@gmail.com about aquiring the dataset
 ---
  
 ## Technologies
