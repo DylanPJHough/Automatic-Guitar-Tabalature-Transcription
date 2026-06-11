@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guitar Tab</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0c;
+    --surface: #111115;
+    --panel: #16161b;
+    --border: #2a2a35;
+    --string-line: #2e2e3a;
+    --accent: #e8c84a;
+    --accent-dim: #7a6520;
+    --accent-glow: rgba(232,200,74,0.15);
+    --text-primary: #e8e4d8;
+    --text-muted: #6b6860;
+    --text-dim: #3a3830;
+    --played-glow: rgba(232,200,74,0.6);
+    --string-e-low: #e87a4a;
+    --string-a: #e8a44a;
+    --string-d: #d4c44a;
+    --string-g: #8ad44a;
+    --string-b: #4ac4d4;
+    --string-e-high: #a44ad4;
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Bebas Neue', sans-serif;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text-primary); font-family: var(--mono); overflow-x: hidden; }
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 100;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 99;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+  }
+
+  /* VIEWS */
+  .view { display: none; flex-direction: column; flex: 1; }
+  .view.active { display: flex; }
+
+  /* BUTTONS */
+  .btn {
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+    font-family: var(--mono); font-size: 11px; letter-spacing: 2px;
+    padding: 8px 16px; cursor: pointer; text-transform: uppercase;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+  .btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .btn.primary:hover { box-shadow: 0 0 24px var(--accent-glow); }
+  .btn.danger  { border-color: #e87a4a; color: #e87a4a; }
+  .btn.danger:hover  { background: #e87a4a; color: var(--bg); box-shadow: 0 0 12px rgba(232,122,74,0.3); }
+  .btn.active  { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .btn.sm { padding: 6px 12px; font-size: 10px; }
+
+  #view-home { align-items: center; justify-content: center; padding: 40px 20px; min-height: 100vh; }
+  .home-shell { width: 100%; max-width: 820px; display: flex; flex-direction: column; gap: 32px; }
+  .home-header { display: flex; align-items: baseline; gap: 20px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+  .home-title { font-family: var(--display); font-size: 64px; letter-spacing: 6px; color: var(--accent); text-shadow: 0 0 40px var(--accent-glow); line-height: 1; }
+  .home-subtitle { font-size: 11px; color: var(--text-muted); letter-spacing: 3px; text-transform: uppercase; }
+  .home-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .home-panel { background: var(--panel); border: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .panel-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent-dim); border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+
+  .session-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+  .session-list::-webkit-scrollbar { width: 4px; }
+  .session-list::-webkit-scrollbar-track { background: var(--bg); }
+  .session-list::-webkit-scrollbar-thumb { background: var(--border); }
+  .session-item { display: flex; align-items: center; padding: 10px 12px; border: 1px solid transparent; cursor: pointer; font-size: 12px; letter-spacing: 1px; color: var(--text-muted); transition: all 0.12s; gap: 10px; }
+  .session-item:hover { border-color: var(--border); color: var(--text-primary); background: var(--surface); }
+  .session-item.selected { border-color: var(--accent-dim); color: var(--accent); background: var(--surface); }
+  .session-item.selected::before { content: '\25B6'; font-size: 8px; color: var(--accent); }
+  .session-item:not(.selected)::before { content: '\00B7'; font-size: 14px; color: var(--text-dim); }
+  .session-empty { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; padding: 12px 0; text-align: center; }
+
+  .new-session-row { display: flex; gap: 8px; }
+  .input-text { flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text-primary); font-family: var(--mono); font-size: 12px; letter-spacing: 1px; padding: 9px 12px; outline: none; transition: border-color 0.15s; }
+  .input-text:focus { border-color: var(--accent-dim); }
+  .input-text::placeholder { color: var(--text-dim); }
+
+  .device-select-wrap { position: relative; }
+  .device-select-wrap::after { content: '\25BE'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--accent-dim); pointer-events: none; font-size: 12px; }
+  select.input-text { width: 100%; cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 30px; }
+  select.input-text option { background: var(--panel); color: var(--text-primary); }
+  .device-hint { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; line-height: 1.5; }
+
+  .home-start-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .home-start-btn { padding: 14px 40px; font-size: 14px; letter-spacing: 4px; }
+  .home-quit-btn  { padding: 14px 24px; font-size: 14px; letter-spacing: 4px; }
+  .home-status { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
+  .home-status.error { color: #e87a7a; }
+  .home-status.ok    { color: var(--accent); }
+
+  .calib-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(10,10,12,0.93);
+    align-items: center; justify-content: center; flex-direction: column; gap: 32px;
+  }
+  .calib-overlay.visible { display: flex; }
+  .calib-title { font-family: var(--display); font-size: 36px; letter-spacing: 6px; color: var(--accent); text-shadow: 0 0 30px var(--accent-glow); }
+  .calib-sub   { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-muted); }
+  .calib-ring-wrap { position: relative; width: 120px; height: 120px; }
+  .calib-ring-wrap svg { transform: rotate(-90deg); }
+  .calib-ring-bg   { fill: none; stroke: var(--border); stroke-width: 4; }
+  .calib-ring-fill { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 314; stroke-dashoffset: 314; filter: drop-shadow(0 0 6px var(--accent)); transition: stroke-dashoffset 0.1s linear; }
+  .calib-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 42px; color: var(--accent); letter-spacing: 2px; }
+  .calib-hint  { font-size: 11px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+  /* TAB VIEWER */
+  header { padding: 20px 40px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 20px; flex-shrink: 0; }
+  .back-btn { font-size: 11px; letter-spacing: 2px; padding: 6px 12px; flex-shrink: 0; }
+  .title { font-family: var(--display); font-size: 40px; letter-spacing: 4px; color: var(--accent); text-shadow: 0 0 30px var(--accent-glow); line-height: 1; }
+  .subtitle { font-size: 11px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; }
+  .session-badge { font-size: 10px; letter-spacing: 2px; color: var(--accent-dim); border: 1px solid var(--accent-dim); padding: 3px 8px; text-transform: uppercase; }
+  .controls { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .tempo-wrap { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
+  .tempo-wrap input[type=range] { -webkit-appearance: none; width: 80px; height: 2px; background: var(--border); outline: none; }
+  .tempo-wrap input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; background: var(--accent); cursor: pointer; }
+
+  .main { flex: 1; padding: 32px 40px; overflow: auto; }
+  .tab-container { position: relative; }
+  .tab-row { display: flex; align-items: stretch; height: 44px; }
+  .string-label { width: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; font-size: 13px; font-weight: bold; letter-spacing: 1px; opacity: 0.9; }
+  .tab-cells { flex: 1; display: flex; align-items: center; position: relative; border-bottom: 1px solid var(--string-line); }
+  .tab-row:last-child  .tab-cells { border-bottom: none; }
+  .tab-row:first-child .tab-cells { border-top: 1px solid var(--string-line); }
+
+  .tab-row[data-string="E2"] .string-label { color: var(--string-e-low); }
+  .tab-row[data-string="A2"] .string-label { color: var(--string-a); }
+  .tab-row[data-string="D3"] .string-label { color: var(--string-d); }
+  .tab-row[data-string="G3"] .string-label { color: var(--string-g); }
+  .tab-row[data-string="B3"] .string-label { color: var(--string-b); }
+  .tab-row[data-string="e4"] .string-label { color: var(--string-e-high); }
+  .tab-row[data-string="E2"] .tab-cells { border-color: rgba(232,122,74,0.25); }
+  .tab-row[data-string="A2"] .tab-cells { border-color: rgba(232,164,74,0.2); }
+  .tab-row[data-string="D3"] .tab-cells { border-color: rgba(212,196,74,0.18); }
+  .tab-row[data-string="G3"] .tab-cells { border-color: rgba(138,212,74,0.15); }
+  .tab-row[data-string="B3"] .tab-cells { border-color: rgba(74,196,212,0.15); }
+  .tab-row[data-string="e4"] .tab-cells { border-color: rgba(164,74,212,0.15); }
+
+  .cell { flex-shrink: 0; width: 38px; height: 44px; display: flex; align-items: center; justify-content: center; position: relative; font-size: 13px; color: var(--text-dim); transition: all 0.1s; }
+  .cell::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--string-line); transform: translateY(-50%); z-index: 0; }
+  .cell .fret-num { position: relative; z-index: 1; min-width: 20px; text-align: center; }
+  .cell.has-note .fret-num { background: var(--surface); padding: 2px 5px; font-size: 13px; font-weight: bold; border-radius: 2px; color: var(--text-primary); transition: all 0.15s; }
+  .cell.has-note[data-string="E2"] .fret-num { color: var(--string-e-low); border: 1px solid rgba(232,122,74,0.4); }
+  .cell.has-note[data-string="A2"] .fret-num { color: var(--string-a);      border: 1px solid rgba(232,164,74,0.35); }
+  .cell.has-note[data-string="D3"] .fret-num { color: var(--string-d);      border: 1px solid rgba(212,196,74,0.3); }
+  .cell.has-note[data-string="G3"] .fret-num { color: var(--string-g);      border: 1px solid rgba(138,212,74,0.3); }
+  .cell.has-note[data-string="B3"] .fret-num { color: var(--string-b);      border: 1px solid rgba(74,196,212,0.3); }
+  .cell.has-note[data-string="e4"] .fret-num { color: var(--string-e-high); border: 1px solid rgba(164,74,212,0.3); }
+  .cell.active .fret-num { background: var(--accent) !important; color: var(--bg) !important; border-color: var(--accent) !important; box-shadow: 0 0 16px var(--played-glow); transform: scale(1.15); }
+
+  .playhead { position: absolute; top: 0; width: 38px; height: 100%; background: rgba(232,200,74,0.04); border-left: 1px solid rgba(232,200,74,0.3); border-right: 1px solid rgba(232,200,74,0.08); pointer-events: none; transition: left 0.1s linear; z-index: 2; }
+  .bar-line  { position: absolute; top: 0; width: 1px; height: 100%; background: var(--border); z-index: 3; pointer-events: none; }
+  .col-nums  { display: flex; padding-left: 48px; margin-bottom: 6px; }
+  .col-num   { width: 38px; flex-shrink: 0; text-align: center; font-size: 9px; color: var(--text-dim); }
+  .col-num.bar-start { color: var(--accent-dim); }
+
+  .status { padding: 12px 40px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 24px; font-size: 10px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; flex-shrink: 0; }
+  .status-note { color: var(--accent); font-size: 13px; font-weight: bold; min-width: 100px; letter-spacing: 1px; }
+  .progress-bar  { flex: 1; height: 2px; background: var(--border); position: relative; overflow: hidden; }
+  .progress-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); transition: width 0.1s linear; box-shadow: 0 0 8px var(--accent-glow); }
+  .legend      { display: flex; gap: 20px; padding: 12px 40px 0; flex-shrink: 0; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-muted); letter-spacing: 1px; }
+  .legend-dot  { width: 8px; height: 8px; border-radius: 1px; }
+</style>
+</head>
+<body>
+
+<!-- CALIBRATION OVERLAY -->
+<div class="calib-overlay" id="calib-overlay">
+  <div class="calib-title">CALIBRATING</div>
+  <div class="calib-sub">Measuring noise floor &mdash; keep still</div>
+  <div class="calib-ring-wrap">
+    <svg width="120" height="120" viewBox="0 0 120 120">
+      <circle class="calib-ring-bg"   cx="60" cy="60" r="50"/>
+      <circle class="calib-ring-fill" cx="60" cy="60" r="50" id="calib-ring"/>
+    </svg>
+    <div class="calib-count" id="calib-count">2</div>
+  </div>
+  <div class="calib-hint">don&rsquo;t play &mdash; silence only</div>
+</div>
+
+<!-- VIEW 1: HOME -->
+<div class="view active" id="view-home">
+  <div class="home-shell">
+
+    <div class="home-header">
+      <div>
+        <div class="home-title">TAB</div>
+        <div class="home-subtitle">Guitar Tablature Recorder</div>
+      </div>
+    </div>
+
+    <div class="home-cols">
+      <div class="home-panel">
+        <div class="panel-label">Sessions</div>
+        <div class="session-list" id="session-list">
+          <div class="session-empty">Loading sessions...</div>
+        </div>
+        <div class="new-session-row">
+          <input class="input-text" type="text" id="new-session-input"
+                 placeholder="new session name..." maxlength="40"
+                 autocomplete="off" spellcheck="false">
+          <button class="btn sm" id="btn-create">+ Create</button>
+        </div>
+      </div>
+
+      <div class="home-panel">
+        <div class="panel-label">Audio Input Device</div>
+        <div class="device-select-wrap">
+          <select class="input-text" id="device-select">
+            <option value="">Loading devices...</option>
+          </select>
+        </div>
+        <div class="device-hint">
+          Select your guitar audio interface or microphone.<br>
+          Use the default if unsure.
+        </div>
+      </div>
+    </div>
+
+    <div class="home-start-row">
+      <button class="btn primary home-start-btn" id="btn-start" disabled>&#9654; START RECORDING</button>
+      <button class="btn danger  home-quit-btn"  id="btn-quit">&#10005; QUIT</button>
+      <span class="home-status" id="home-status">Select or create a session to begin.</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- VIEW 2: TAB VIEWER -->
+<div class="view" id="view-tab">
+
+  <header>
+    <button class="btn back-btn" id="btn-back">&#8592; HOME</button>
+    <div>
+      <div class="title">TAB</div>
+      <div class="subtitle" id="subtitle">Guitar Tablature</div>
+    </div>
+    <span class="session-badge" id="session-badge"></span>
+    <div class="controls">
+      <div class="tempo-wrap">
+        <span>BPM</span>
+        <input type="range" id="bpm" min="40" max="220" value="100">
+        <span id="bpm-val">100</span>
+      </div>
+      <span id="live-indicator" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent-dim);"></span>
+      <button class="btn" id="btn-reload">&#8635; RELOAD</button>
+      <button class="btn" id="btn-play">&#9654; PLAY</button>
+      <button class="btn" id="btn-stop">&#9632; STOP</button>
+    </div>
+  </header>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--string-e-low)"></div> E (low)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--string-a)"></div> A</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--string-d)"></div> D</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--string-g)"></div> G</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--string-b)"></div> B</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--string-e-high)"></div> e (high)</div>
+  </div>
+
+  <div class="main">
+    <div class="col-nums" id="col-nums"></div>
+    <div class="tab-container" id="tab-container">
+      <div class="playhead" id="playhead" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="status">
+    <span>NOTE</span>
+    <span class="status-note" id="status-note">&mdash;</span>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <span id="status-pos">0 / 0</span>
+  </div>
+
+</div>
+
+<script>
+// ── View switching ──────────────────────────────────────────────
+function showView(id) {
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+// ── State ───────────────────────────────────────────────────────
+var selectedSession = null;
+var selectedDevice  = null;
+
+// ── Sessions ────────────────────────────────────────────────────
+async function loadSessions() {
+  try {
+    var res  = await fetch('/api/sessions');
+    var list = await res.json();
+    renderSessions(list);
+  } catch(e) {
+    document.getElementById('session-list').innerHTML =
+      '<div class="session-empty">Could not load sessions.</div>';
+  }
+}
+
+function renderSessions(list) {
+  var el = document.getElementById('session-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="session-empty">No sessions yet &mdash; create one below.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  list.forEach(function(name) {
+    var item = document.createElement('div');
+    item.className = 'session-item' + (name === selectedSession ? ' selected' : '');
+    item.textContent = name;
+    item.addEventListener('click', function() { selectSession(name); });
+    el.appendChild(item);
+  });
+}
+
+function selectSession(name) {
+  selectedSession = name;
+  document.querySelectorAll('.session-item').forEach(function(el) {
+    el.classList.toggle('selected', el.textContent === name);
+  });
+  document.getElementById('btn-start').disabled = false;
+}
+
+// ── Devices ─────────────────────────────────────────────────────
+async function loadDevices() {
+  var sel = document.getElementById('device-select');
+  try {
+    var res     = await fetch('/api/devices');
+    var devices = await res.json();
+    sel.innerHTML = '';
+
+    var def = document.createElement('option');
+    def.value = '';
+    def.textContent = '— System Default —';
+    sel.appendChild(def);
+
+    devices.forEach(function(d) {
+      var opt = document.createElement('option');
+      opt.value = d.index;
+      opt.textContent = '[' + d.index + '] ' + d.name + (d.is_default ? ' \u2713' : '');
+      sel.appendChild(opt);
+    });
+
+    if (!devices.length) {
+      sel.innerHTML = '<option value="">No input devices found</option>';
+    }
+  } catch(e) {
+    sel.innerHTML = '<option value="">Could not load devices</option>';
+  }
+}
+
+document.getElementById('device-select').addEventListener('change', function() {
+  selectedDevice = this.value === '' ? null : parseInt(this.value, 10);
+});
+
+// ── Create session ───────────────────────────────────────────────
+document.getElementById('btn-create').addEventListener('click', async function() {
+  var input = document.getElementById('new-session-input');
+  var name  = input.value.trim();
+  if (!name) return;
+
+  var btn = document.getElementById('btn-create');
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  try {
+    var res  = await fetch('/api/sessions/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name })
+    });
+    var data = await res.json();
+    if (data.error) {
+      setHomeStatus(data.error, 'error');
+    } else {
+      input.value = '';
+      await loadSessions();
+      selectSession(data.name);
+    }
+  } catch(e) {
+    setHomeStatus('Failed to create session.', 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '+ Create';
+});
+
+document.getElementById('new-session-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('btn-create').click();
+});
+
+// ── Calibration overlay ──────────────────────────────────────────
+var calibInterval = null;
+var calibDuration = 2;
+
+fetch('/api/config').then(function(r) { return r.json(); }).then(function(d) {
+  calibDuration = d.calibrate_sec || 2;
+}).catch(function() {});
+
+function showCalibration(durationSec) {
+  var overlay = document.getElementById('calib-overlay');
+  var ring    = document.getElementById('calib-ring');
+  var count   = document.getElementById('calib-count');
+  var circumf = 314;
+
+  overlay.classList.add('visible');
+  count.textContent = Math.ceil(durationSec);
+  ring.style.strokeDashoffset = circumf;
+
+  var elapsed = 0;
+  calibInterval = setInterval(function() {
+    elapsed += 0.1;
+    var progress = Math.min(elapsed / durationSec, 1);
+    ring.style.strokeDashoffset = circumf * (1 - progress);
+    count.textContent = Math.max(0, Math.ceil(durationSec - elapsed));
+  }, 100);
+}
+
+function hideCalibration() {
+  clearInterval(calibInterval);
+  calibInterval = null;
+  document.getElementById('calib-overlay').classList.remove('visible');
+}
+
+// ── Start recording ──────────────────────────────────────────────
+document.getElementById('btn-start').addEventListener('click', async function() {
+  if (!selectedSession) return;
+
+  var btn = document.getElementById('btn-start');
+  btn.disabled = true;
+  btn.textContent = 'STARTING...';
+  setHomeStatus('Connecting to audio device...', '');
+  showCalibration(calibDuration);
+
+  try {
+    var res  = await fetch('/api/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session: selectedSession, device: selectedDevice })
+    });
+    var data = await res.json();
+    hideCalibration();
+    if (data.error) {
+      setHomeStatus(data.error, 'error');
+      btn.disabled = false;
+      btn.innerHTML = '&#9654; START RECORDING';
+    } else {
+      enterTabView(selectedSession);
+    }
+  } catch(e) {
+    hideCalibration();
+    setHomeStatus('Could not start recorder.', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '&#9654; START RECORDING';
+  }
+});
+
+// ── Quit ─────────────────────────────────────────────────────────
+document.getElementById('btn-quit').addEventListener('click', async function() {
+  document.getElementById('btn-quit').disabled = true;
+  await fetch('/api/stop').catch(function() {});
+  await fetch('/api/quit').catch(function() {});
+  document.body.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0c;';
+  document.body.innerHTML = '<p style="font-family:monospace;color:#6b6860;letter-spacing:3px;font-size:12px;text-transform:uppercase;">Session ended. You may close this tab.</p>';
+});
+
+function setHomeStatus(msg, type) {
+  var el = document.getElementById('home-status');
+  el.textContent = msg;
+  el.className = 'home-status' + (type ? ' ' + type : '');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TAB VIEWER
+// ══════════════════════════════════════════════════════════════════
+
+var STRINGS = [
+  { key: 'e4', label: 'e' },
+  { key: 'B3', label: 'B' },
+  { key: 'G3', label: 'G' },
+  { key: 'D3', label: 'D' },
+  { key: 'A2', label: 'A' },
+  { key: 'E2', label: 'E' }
+];
+
+function normString(s) {
+  var t = s.trim().toLowerCase();
+  if (t.indexOf('high e') >= 0 || t === 'e4' || t === 'e (high)' || t === 'high e') return 'e4';
+  if (t.indexOf('low e')  >= 0 || t === 'e2' || t === 'e (low)'  || t === 'low e')  return 'E2';
+  return s.trim();
+}
+
+var CHROMATIC = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function noteAtFret(stringKey, fret) {
+  var openNotes = { E2:{n:'E',o:2}, A2:{n:'A',o:2}, D3:{n:'D',o:3}, G3:{n:'G',o:3}, B3:{n:'B',o:3}, e4:{n:'E',o:4} };
+  var open = openNotes[stringKey];
+  if (!open) return 'fret ' + fret;
+  var idx = (CHROMATIC.indexOf(open.n) + fret) % 12;
+  return CHROMATIC[idx] + (open.o + Math.floor((CHROMATIC.indexOf(open.n) + fret) / 12));
+}
+
+var grid       = {};
+var totalCols  = 0;
+var playing    = false;
+var currentCol = -1;
+var timer      = null;
+var bpm        = 100;
+var activeSession = null;
+
+// ── Live update polling ──────────────────────────────────────────
+var pollTimer      = null;
+var lastNotesJson  = null;
+var pendingUpdate  = false;
+var POLL_INTERVAL  = 2000; // ms
+
+function startPolling() {
+  stopPolling();
+  pollTimer = setInterval(pollForUpdates, POLL_INTERVAL);
+}
+
+function stopPolling() {
+  if (pollTimer !== null) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+async function pollForUpdates() {
+  if (!activeSession) return;
+  try {
+    var res = await fetch('/sessions/' + encodeURIComponent(activeSession) + '.json', {
+      cache: 'no-store'
+    });
+    if (!res.ok) return;
+    var text = await res.text();
+    if (text === lastNotesJson) return; // nothing changed
+    lastNotesJson = text;
+    if (playing) {
+      // don't disrupt playback — apply when playback finishes
+      pendingUpdate = true;
+      showLiveIndicator(true);
+    } else {
+      applyUpdate(JSON.parse(text));
+    }
+  } catch(e) { /* ignore transient errors */ }
+}
+
+function applyUpdate(notes) {
+  pendingUpdate = false;
+  showLiveIndicator(false);
+  buildTab(notes);
+}
+
+function showLiveIndicator(hasPending) {
+  var ind = document.getElementById('live-indicator');
+  if (!ind) return;
+  if (hasPending) {
+    ind.textContent = '\u25CF NEW NOTES \u2014 waiting for playback';
+    ind.style.color = 'var(--accent)';
+  } else {
+    ind.textContent = '\u25CF LIVE';
+    ind.style.color = 'var(--accent-dim)';
+  }
+}
+// ────────────────────────────────────────────────────────────────
+
+var colNumsEl    = document.getElementById('col-nums');
+var container    = document.getElementById('tab-container');
+var playhead     = document.getElementById('playhead');
+var btnPlay      = document.getElementById('btn-play');
+var btnStop      = document.getElementById('btn-stop');
+var bpmSlider    = document.getElementById('bpm');
+var bpmVal       = document.getElementById('bpm-val');
+var statusNote   = document.getElementById('status-note');
+var statusPos    = document.getElementById('status-pos');
+var progressFill = document.getElementById('progress-fill');
+var subtitle     = document.getElementById('subtitle');
+
+function enterTabView(session) {
+  activeSession = session;
+  lastNotesJson = null;
+  pendingUpdate = false;
+  document.getElementById('session-badge').textContent = session;
+  var btn = document.getElementById('btn-start');
+  btn.disabled = false;
+  btn.innerHTML = '&#9654; START RECORDING';
+  setHomeStatus('Select or create a session to begin.', '');
+  showView('view-tab');
+  showLiveIndicator(false);
+  loadNotes();
+  startPolling();
+}
+
+function buildTab(notes) {
+  stopPlay();
+  colNumsEl.innerHTML = '';
+  container.querySelectorAll('.tab-row').forEach(function(r) { r.remove(); });
+
+  totalCols = notes.length;
+  subtitle.textContent = activeSession + ' \u2014 ' + totalCols + ' note' + (totalCols !== 1 ? 's' : '');
+  statusPos.textContent = '0 / ' + totalCols;
+
+  grid = {};
+  STRINGS.forEach(function(s) { grid[s.key] = new Array(totalCols).fill(null); });
+  notes.forEach(function(n, i) {
+    var key = normString(n.string);
+    if (grid[key] !== undefined) grid[key][i] = n.fret;
+  });
+
+  for (var i = 0; i < totalCols; i++) {
+    var d = document.createElement('div');
+    d.className = 'col-num' + (i % 4 === 0 ? ' bar-start' : '');
+    d.textContent = i % 4 === 0 ? (i / 4 + 1) : '';
+    colNumsEl.appendChild(d);
+  }
+
+  STRINGS.forEach(function(s) {
+    var row = document.createElement('div');
+    row.className = 'tab-row';
+    row.dataset.string = s.key;
+
+    var lbl = document.createElement('div');
+    lbl.className = 'string-label';
+    lbl.textContent = s.label;
+    row.appendChild(lbl);
+
+    var cells = document.createElement('div');
+    cells.className = 'tab-cells';
+
+    for (var i = 0; i < totalCols; i++) {
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.col = i;
+      cell.dataset.string = s.key;
+      var fret = grid[s.key][i];
+      if (fret !== null) {
+        cell.classList.add('has-note');
+        var span = document.createElement('span');
+        span.className = 'fret-num';
+        span.textContent = fret;
+        cell.appendChild(span);
+      }
+      cells.appendChild(cell);
+    }
+
+    for (var i = 4; i < totalCols; i += 4) {
+      var bl = document.createElement('div');
+      bl.className = 'bar-line';
+      bl.style.left = (i * 38) + 'px';
+      cells.appendChild(bl);
+    }
+
+    row.appendChild(cells);
+    container.appendChild(row);
+  });
+}
+
+async function loadNotes() {
+  if (!activeSession) return;
+  subtitle.textContent = activeSession + ' \u2014 loading...';
+  try {
+    var res  = await fetch('/sessions/' + encodeURIComponent(activeSession) + '.json', {
+      cache: 'no-store'
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var text  = await res.text();
+    lastNotesJson = text;          // seed the poller's baseline
+    pendingUpdate = false;
+    showLiveIndicator(false);
+    buildTab(JSON.parse(text));
+  } catch(err) {
+    subtitle.textContent = 'Error loading session: ' + err.message;
+  }
+}
+
+bpmSlider.addEventListener('input', function() {
+  bpm = +bpmSlider.value;
+  bpmVal.textContent = bpm;
+  if (playing) { clearInterval(timer); scheduleNext(); }
+});
+
+function clearActive() {
+  document.querySelectorAll('.cell.active').forEach(function(c) { c.classList.remove('active'); });
+}
+
+function activateCol(col) {
+  clearActive();
+  if (col < 0) {
+    playhead.style.display = 'none';
+    statusNote.innerHTML   = '&mdash;';
+    statusPos.textContent  = '0 / ' + totalCols;
+    progressFill.style.width = '0%';
+    return;
+  }
+  playhead.style.display = 'block';
+  playhead.style.left    = (48 + col * 38) + 'px';
+  var activeCells = container.querySelectorAll('.cell[data-col="' + col + '"].has-note');
+  var noteLabel = '';
+  activeCells.forEach(function(c) {
+    c.classList.add('active');
+    var fret = grid[c.dataset.string][col];
+    if (fret !== null) noteLabel = noteAtFret(c.dataset.string, fret);
+  });
+  statusNote.textContent = noteLabel || '\u2014';
+  statusPos.textContent  = (col + 1) + ' / ' + totalCols;
+  progressFill.style.width = ((col + 1) / totalCols * 100) + '%';
+  var cellEl = container.querySelector('.cell[data-col="' + col + '"]');
+  if (cellEl) cellEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+function scheduleNext() {
+  var interval = (60 / bpm) * 1000;
+  timer = setInterval(function() {
+    currentCol++;
+    if (currentCol >= totalCols) { stopPlay(); return; }
+    activateCol(currentCol);
+  }, interval);
+}
+
+function startPlay() {
+  if (playing) return;
+  playing = true;
+  btnPlay.classList.add('active');
+  currentCol = -1;
+  scheduleNext();
+}
+
+function stopPlay() {
+  playing = false;
+  clearInterval(timer);
+  btnPlay.classList.remove('active');
+  currentCol = -1;
+  activateCol(-1);
+  if (pendingUpdate && lastNotesJson) {
+    try { applyUpdate(JSON.parse(lastNotesJson)); } catch(e) {}
+  }
+}
+
+btnPlay.addEventListener('click', function() {
+  if (playing) stopPlay(); else startPlay();
+  btnPlay.innerHTML = playing ? '&#9208; PAUSE' : '&#9654; PLAY';
+});
+
+btnStop.addEventListener('click', function() {
+  stopPlay();
+  btnPlay.innerHTML = '&#9654; PLAY';
+});
+
+container.addEventListener('click', function(e) {
+  var cell = e.target.closest('.cell.has-note');
+  if (cell) {
+    stopPlay();
+    btnPlay.innerHTML = '&#9654; PLAY';
+    activateCol(+cell.dataset.col);
+  }
+});
+
+document.getElementById('btn-reload').addEventListener('click', loadNotes);
+
+// Back button — stops the recorder before returning home
+document.getElementById('btn-back').addEventListener('click', async function() {
+  stopPlay();
+  stopPolling();
+  btnPlay.innerHTML = '&#9654; PLAY';
+  await fetch('/api/stop').catch(function() {});
+  showView('view-home');
+  loadSessions();
+});
+
+// Init
+loadSessions();
+loadDevices();
+</script>
+</body>
+</html>
