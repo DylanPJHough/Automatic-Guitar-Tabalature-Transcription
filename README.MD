@@ -1,5 +1,7 @@
 # Deep Learning for Guitar Tablature Transcription from Monophonic Audio
  
+![Screenshot of the tablature interface](assets/screenshot.png)
+
 A deep learning system that listens to a guitar being played and generates tablature in real time. The system captures individual notes through gate-based onset detection, predicts the string (1–6) and fret (0–22) using a trained CNN, and displays the results as interactive tablature in a browser-based interface.
  
 **Author:** Dylan Hough  
